@@ -1,8 +1,8 @@
 #ifndef __DEFS_H
 #define __DEFS_H
 
-#include <sstream>
-#include <string>
+#include <sstream>      // toString() uses stringstream to build strings.
+#include <string>       // toString() returns std::string representation of class.
 
 class Point{
     public:
@@ -84,6 +84,5 @@ inline float operator * (const Vector& v1, const Vector& v2){
     float retv = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
     return retv;
 }
-
 
 #endif

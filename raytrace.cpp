@@ -1,20 +1,17 @@
-#include <cmath>
-#include <string>
-#include <cfloat>
-#include <pthread.h>
+#include <cmath>            // Needed for sqrtf() 
+#include <cfloat>           // Needed for FLT_MAX
+#include <pthread.h>        // Needed to parallelize the rendering.
 
-#include "defs.h"
-#include "raytrace.h"
-#include "scene.h"
-#include "bitmap_image.h"
+#include "bitmap_image.h"   // Needed to manipulate the image.
+#include "defs.h"           // Defines basic Point/Vector/Color classes.
+#include "raytrace.h"       // Defines Light/Ray/Object classes.
+#include "scene.h"          // Defines a Scene.
 
 #define SUPERSAMPLE 256
 
 using namespace std;
 
-extern bitmap_image globalPic;
-    
-bool hitSphere(const Ray& r, const Sphere& s, float& t){
+bool Sphere::hitSphere(const Ray& r, float& t){
     
     // Ray R
     // Sphere S
@@ -25,11 +22,11 @@ bool hitSphere(const Ray& r, const Sphere& s, float& t){
     // B = 2(o .* R.dir)
     // C = (o .* o) - S.rad^2
 
-    Vector o = r.start - s.pos;      
+    Vector o = r.start - this->pos;      
     
     float A = r.dir * r.dir;
     float B = 2 * (r.dir * o);
-    float C = o*o - s.rad*s.rad;
+    float C = o*o - this->rad*this->rad;
 
     float disc = B*B - 4*A*C;
     if(disc < 0.0f){
@@ -67,21 +64,15 @@ bool hitSphere(const Ray& r, const Sphere& s, float& t){
     return true;
 }
 
-struct arg{
-    Scene* myScene; 
-    int numthreads;
-    int tId;
-};
-
-void parallelDraw(Scene* myScene, int numthreads){
+void parallelDraw(Scene* myScene, bitmap_image* pic, int numthreads){
     
     pthread_t threads[numthreads];
 
-    int incr = globalPic.height()/numthreads;
     for(int tId = 0; tId <= numthreads-1; tId++){
 
         arg* inputs = new arg();
         inputs->myScene = myScene;
+        inputs->pic = pic;
         inputs->tId = tId;
         inputs->numthreads = numthreads;
 
@@ -99,8 +90,8 @@ void* partialDraw(void* ptr){
     float red, green, blue;
     float fragRed, fragGreen, fragBlue;
     
-    for(int y = myArgs->tId; y < globalPic.height(); y+=myArgs->numthreads)
-    for(int x = 0; x < globalPic.width(); x++){
+    for(int y = myArgs->tId; y < myArgs->pic->height(); y+=myArgs->numthreads)
+    for(int x = 0; x < myArgs->pic->width(); x++){
         
         red = 0; green = 0; blue = 0;
         for(float fragX = x; fragX < x+1; fragX += sqrtf(SUPERSAMPLE)/SUPERSAMPLE)
@@ -113,12 +104,12 @@ void* partialDraw(void* ptr){
             green += fragGreen;
             blue += fragBlue;
         }
-        globalPic.set_pixel(x,y, min(red*255.0f, 255.0f), min(green*255.0f, 255.0f), min(blue*255.0f, 255.0f));
+        myArgs->pic->set_pixel(x,y, min(red*255.0f, 255.0f), min(green*255.0f, 255.0f), min(blue*255.0f, 255.0f));
     }
     pthread_exit(NULL);
 }
    
-/*
+
 void draw(Scene& myScene, bitmap_image& pic){
     
     float red, green, blue;
@@ -141,7 +132,7 @@ void draw(Scene& myScene, bitmap_image& pic){
         pic.set_pixel(x,y, min(red*255.0f, 255.0f), min(green*255.0f, 255.0f), min(blue*255.0f, 255.0f));
     }
 }
-*/
+
 void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float coef){
     
     r = 0; g = 0; b = 0;
@@ -153,7 +144,7 @@ void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float 
         float minT = FLT_MAX;
 
         for(unsigned int i = 0; i < myScene.spheres.size(); ++i){
-            if(hitSphere(viewRay, myScene.spheres[i], t) && t <= minT){
+            if(myScene.spheres[i].hitSphere(viewRay, t) && t <= minT){
                 currentObj = i;
                 minT = t;
             }
@@ -189,7 +180,7 @@ void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float 
             // computation of the shadows
             bool inShadow = false; 
             for (unsigned int i = 0; i < myScene.spheres.size(); ++i) {
-                if (hitSphere(lightRay, myScene.spheres[i], t)) {
+                if (myScene.spheres[i].hitSphere(lightRay, t)) {
                     inShadow = true;
                     break;
                 }

@@ -2,72 +2,57 @@
 // Jordan Ford
 // May 8, 2013
 
+#include <iostream>         // Needed for cout and endl.
+#include <time.h>           // Needed for tracking execution time.
 
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <time.h>
+#include "bitmap_image.h"   // Needed to manipulate the image.
+#include "defs.h"           // Defines basic Point/Vector/Color classes.
+#include "raytrace.h"       // Defines Light/Ray/Object classes.
+#include "scene.h"          // Defines a Scene.
 
-#include "bitmap_image.h"
-#include "defs.h"
-#include "raytrace.h"
-#include "scene.h"
+#define THREADS 8
+#define HEIGHT 480
+#define WIDTH 640
 
-#define THREADS 1
+#define CLS "\033[2J\033[1;1H"
 
 using namespace std;
 
-bitmap_image globalPic (640, 480);
-
 int main () {
 
-    cout << "\033[2J\033[1;1H";
+    // Clear the terminal screen.
+    cout << CLS;
 
+    // Initialize the scene.
+    // TODO: Don't hardcode it!
     Scene drawScene;
-    drawScene.sizex = 640;
-    drawScene.sizey = 480;
     
+    // Initialize the image.
+    bitmap_image pic(WIDTH, HEIGHT);
 
-    Material m0 = {.5, 1.0f, 1.0f, 0.0f};
-    Material m1 = {.5, 0.0f, 1.0f, 1.0f};
-    Material m2 = {.5, 1.0f, 0.0f, 1.0f};
-
-    drawScene.materials.push_back(m0);
-    drawScene.materials.push_back(m1);
-    drawScene.materials.push_back(m2);
-
-    Sphere s0 = {{233, 290, 0.0f}, 100.0f, 0};
-    Sphere s1 = {{407, 290, 0.0f}, 100.0f, 1};
-    Sphere s2 = {{320, 140, 0.0f}, 100.0f, 2};
-
-    drawScene.spheres.push_back(s0);
-    drawScene.spheres.push_back(s1);  
-    drawScene.spheres.push_back(s2);
-
-    Light l0 = {{0.0f,240,-100.0f},1,1,1};
-    Light l1 = {{640, 240, -10000},.6,.7,1};
-
-    drawScene.lights.push_back(l0);
-    drawScene.lights.push_back(l1);     
-        
-    float begin = clock();
+    // Get the initial time.
     struct timespec start, finish;
-    double elapsed;
-    
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    parallelDraw(&drawScene, THREADS);
+    // Draw the picture.
+    parallelDraw(&drawScene, &pic, THREADS);
 
+    // Get the final time.
     clock_gettime(CLOCK_MONOTONIC, &finish);
     
-    elapsed = finish.tv_sec - start.tv_sec;
-    elapsed += (finish.tv_nsec - start.tv_nsec)/1000000000.0f;    
-    
+    // Calculate the elapsed time.
+    double elapsed;
+    elapsed = (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+    elapsed += finish.tv_sec - start.tv_sec;
+
+    // Display the elapsed time.
     cout << elapsed << endl;
 
-    globalPic.save_image("output.bmp");    
+    // Save the final rendering.
+    pic.save_image("output.bmp");
+ 
+    // Display the rendering.   
     system("eog output.bmp");
-
 
     return 0;
 }

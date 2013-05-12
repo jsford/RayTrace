@@ -1,12 +1,10 @@
 #ifndef __RAYTRACE_H
 #define __RAYTRACE_H
 
-#include <string>
-
-#include "defs.h"
-#include "bitmap_image.h"
-
+class bitmap_image;
+class Ray;
 class Scene;
+class Point;
 
 class Material{
     public:
@@ -19,6 +17,8 @@ class Sphere{
         Point pos;
         float rad;
         int materialId;
+
+        bool hitSphere(const Ray& r, float& t);
 };
 
 class Light{
@@ -33,11 +33,28 @@ class Ray{
         Vector dir;
 };
 
-bool hitSphere(const Ray& r, const Sphere& s, float& t);
-
+// The following functions use pthreads to parrallelize the rendering.
 void* partialDraw(void* ptr);
-void parallelDraw(Scene* myScene, int numthreads);
+void parallelDraw(Scene* myScene, bitmap_image* pic, int numthreads);
 
-void draw(Scene& myScene, bitmap_image& pic);
+struct arg{
+    Scene* myScene;
+    bitmap_image* pic; 
+    int numthreads;
+    int tId;
+};
+
+// The draw function is a serial version of the renderer.
+void draw(const Scene& myScene, bitmap_image& pic);
+
+// Shoot a ray into the scene and find the color that it returns.
 void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float coeff);
+
 #endif
+
+
+
+
+
+
+
