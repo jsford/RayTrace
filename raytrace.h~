@@ -1,0 +1,70 @@
+#ifndef __RAYTRACE_H
+#define __RAYTRACE_H
+
+#define ZOOM 4.0
+
+class bitmap_image;
+class Ray;
+class Scene;
+class Point;
+class Color;
+
+class Material{
+    public:
+        enum {
+        gouraud=0,
+        noise=1,
+        marble=2,
+        turbulence=3
+    } type;
+
+        Color diffuse;
+        Color diffuse2;
+        float reflection;
+        Color specular;
+        float power;
+};
+
+class Sphere{
+    public:
+        Point pos;
+        float rad;
+        int materialId;
+
+        bool hitSphere(const Ray& r, float& t);
+};
+
+class Light{
+    public:
+        Point pos;
+        Color intensity;
+};
+
+class Ray{
+    public:
+        Point start;
+        Vector dir;
+};
+
+// The following functions use pthreads to parrallelize the rendering.
+void* partialDraw(void* ptr);
+void parallelDraw(Scene* myScene, bitmap_image* pic, int numthreads);
+
+struct arg{
+    Scene* myScene;
+    bitmap_image* pic; 
+    int numthreads;
+    int tId;
+};
+
+// Shoot a ray into the scene and find the color that it returns.
+Color shootRay(Ray& viewRay, Scene& myScene);
+
+#endif
+
+
+
+
+
+
+

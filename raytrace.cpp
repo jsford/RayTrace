@@ -7,8 +7,6 @@
 #include "raytrace.h"       // Defines Light/Ray/Object classes.
 #include "scene.h"          // Defines a Scene.
 
-#define SUPERSAMPLE 256
-
 using namespace std;
 
 bool Sphere::hitSphere(const Ray& r, float& t){
@@ -87,76 +85,46 @@ void parallelDraw(Scene* myScene, bitmap_image* pic, int numthreads){
 void* partialDraw(void* ptr){
     arg* myArgs = (arg*)ptr;
 
-    float red, green, blue;
-    float fragRed, fragGreen, fragBlue;
-    
-    for(int y = myArgs->tId; y < myArgs->pic->height(); y+=myArgs->numthreads)
-    for(int x = 0; x < myArgs->pic->width(); x++){
-        
-        red = 0; green = 0; blue = 0;
-        for(float fragX = x; fragX < x+1; fragX += sqrtf(SUPERSAMPLE)/SUPERSAMPLE)
-        for(float fragY = y; fragY < y+1; fragY += sqrtf(SUPERSAMPLE)/SUPERSAMPLE){
+    for(float y = 0; y < myArgs->pic->height()/ZOOM; y+=1.0/ZOOM)
+    for(float x = myArgs->tId/ZOOM; x < myArgs->pic->width()/ZOOM; x+=myArgs->numthreads/ZOOM){
 
-            Ray viewRay = {{fragX,fragY, -1000}, {0,0,1}};
-            shootRay(viewRay, *(myArgs->myScene), fragRed, fragGreen, fragBlue, 1.0/SUPERSAMPLE);
+        Color thisColor = {0.0, 0.0, 0.0};
+        Ray viewRay = {{x,y, -1000}, {0,0,1}};
+        thisColor = shootRay(viewRay, *(myArgs->myScene));
 
-            red += fragRed;
-            green += fragGreen;
-            blue += fragBlue;
-        }
-        myArgs->pic->set_pixel(x,y, min(red*255.0f, 255.0f), min(green*255.0f, 255.0f), min(blue*255.0f, 255.0f));
+        myArgs->pic->set_pixel(x*ZOOM,y*ZOOM, round(min(thisColor.red*255.0f, 255.0f)), 
+                                              round(min(thisColor.green*255.0f, 255.0f)), 
+                                              round(min(thisColor.blue*255.0f, 255.0f)));
     }
     pthread_exit(NULL);
 }
-   
 
-void draw(Scene& myScene, bitmap_image& pic){
+Color shootRay(Ray& viewRay, Scene& myScene){
     
-    float red, green, blue;
-    float fragRed, fragGreen, fragBlue;
-
-    for(int y = 0; y < pic.height(); y++)
-    for(int x = 0; x < pic.width(); x++){
-        
-        red = 0; green = 0; blue = 0;
-        for(float fragX = x; fragX < x+1; fragX += sqrtf(SUPERSAMPLE)/SUPERSAMPLE)
-        for(float fragY = y; fragY < y+1; fragY += sqrtf(SUPERSAMPLE)/SUPERSAMPLE){
-
-            Ray viewRay = {{fragX,fragY, -1000}, {0,0,1}};
-            shootRay(viewRay, myScene, fragRed, fragGreen, fragBlue, 1.0/SUPERSAMPLE);
-
-            red += fragRed;
-            green += fragGreen;
-            blue += fragBlue;
-        }
-        pic.set_pixel(x,y, min(red*255.0f, 255.0f), min(green*255.0f, 255.0f), min(blue*255.0f, 255.0f));
-    }
-}
-
-void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float coef){
-    
-    r = 0; g = 0; b = 0;
+    Color retColor = {0.0f, 0.0f, 0.0f};
+    float coef = 1.0f;
     int depth = 0;
 
     do{
-        float t;
+        float temp_t;
         int currentObj = -1;
-        float minT = FLT_MAX;
+        float t = FLT_MAX;
 
         for(unsigned int i = 0; i < myScene.spheres.size(); ++i){
-            if(myScene.spheres[i].hitSphere(viewRay, t) && t <= minT){
+            if(myScene.spheres[i].hitSphere(viewRay, temp_t) && temp_t <= t){
                 currentObj = i;
-                minT = t;
+                t = temp_t;
             }
         }
-        t = minT;
 
-        // Break if no intersections found.
+        // Break if no hitPts found.
         if(currentObj == -1){ break; }
 
-        Point intersection = viewRay.start + t*viewRay.dir;
+        Point hitPt = viewRay.start + t*viewRay.dir;
 
-        Vector norm = intersection - myScene.spheres[currentObj].pos;
+        Vector norm = hitPt - myScene.spheres[currentObj].pos;
+        Vector perturb = {10*(float)rand()/RAND_MAX, 10*(float)rand()/RAND_MAX, 10*(float)rand()/RAND_MAX};
+        norm += perturb;
         float temp = norm * norm;
         if (temp == 0.0f){ break; }
 
@@ -165,18 +133,27 @@ void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float 
 
         Material currentMat = myScene.materials[myScene.spheres[currentObj].materialId];
         
+        Ray lightRay;
+        lightRay.start = hitPt;
+
         for (unsigned int j = 0; j < myScene.lights.size(); ++j) {
             Light current = myScene.lights[j];
-            Vector dist = current.pos - intersection;
+            lightRay.dir = current.pos - hitPt;
 
-            if (norm * dist <= 0.0f){ continue; }
-            
-            float t = sqrtf(dist * dist);
-            
-            if ( t <= 0.0f ){ continue; }
-            Ray lightRay;
-            lightRay.start = intersection;
-            lightRay.dir = (1/t) * dist;
+            float fLightProjection = lightRay.dir * norm;
+
+            if (fLightProjection <= 0.0f){ continue; }
+
+            float lightDist = lightRay.dir * lightRay.dir;
+            {
+                float temp;
+			    if ( lightDist == 0.0f )
+				    continue;
+                temp = 1.0/sqrtf(lightDist);
+			    lightRay.dir = temp * lightRay.dir;
+                fLightProjection = temp * fLightProjection;
+            }
+                        
             // computation of the shadows
             bool inShadow = false; 
             for (unsigned int i = 0; i < myScene.spheres.size(); ++i) {
@@ -188,9 +165,24 @@ void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float 
             if (!inShadow) {
 
                  float lambert = (lightRay.dir * norm) * coef;
-                 r += lambert * current.red * currentMat.red;
-                 g += lambert * current.green * currentMat.green;
-                 b += lambert * current.blue * currentMat.blue;
+                 retColor.red += lambert * current.intensity.red * currentMat.diffuse.red;
+                 retColor.green += lambert * current.intensity.green * currentMat.diffuse.green;
+                 retColor.blue += lambert * current.intensity.blue * currentMat.diffuse.blue;
+
+                 float exposure = -1.2f;
+                 retColor.red = 1.0 - expf(retColor.red * exposure);                
+                 retColor.blue = 1.0 - expf(retColor.blue * exposure);
+                 retColor.green = 1.0 - expf(retColor.green * exposure);
+
+                 float fViewProjection = viewRay.dir * norm;
+				 Vector blinnDir = lightRay.dir - viewRay.dir;
+				 float temp = blinnDir * blinnDir;
+				 if (temp != 0.0f )
+				 {
+					 float blinn = 1.0/sqrtf(temp) * max(fLightProjection - fViewProjection , 0.0f);
+                     blinn = coef * powf(blinn, currentMat.power);
+					 retColor += blinn * currentMat.specular * current.intensity;
+				 }
             }
 
         }
@@ -198,10 +190,12 @@ void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float 
         // We iterate on the next reflection
         coef *= currentMat.reflection;
         float reflect = 2.0f * (viewRay.dir * norm);
-        viewRay.start = intersection;
+        viewRay.start = hitPt;
         viewRay.dir = viewRay.dir - reflect * norm;
 
         depth++;
     }while(coef > 0.0f && depth < 10);
+    
+    return retColor;
 }
 

@@ -10,9 +10,7 @@
 #include "raytrace.h"       // Defines Light/Ray/Object classes.
 #include "scene.h"          // Defines a Scene.
 
-#define THREADS 8
-#define HEIGHT 480
-#define WIDTH 640
+#define THREADS 4
 
 #define CLS "\033[2J\033[1;1H"
 
@@ -28,7 +26,7 @@ int main () {
     Scene drawScene;
     
     // Initialize the image.
-    bitmap_image pic(WIDTH, HEIGHT);
+    bitmap_image pic(drawScene.sizex, drawScene.sizey);
 
     // Get the initial time.
     struct timespec start, finish;

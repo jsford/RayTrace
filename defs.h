@@ -33,6 +33,26 @@ class Vector{
     }
 };
 
+class Color{
+    public:
+        enum OFFSET
+        {
+            OFFSET_RED, 
+            OFFSET_GREEN, 
+            OFFSET_BLUE, 
+            OFFSET_MAX
+        };
+
+        float red, green, blue;
+
+        inline Color& operator+= (const Color& c2){
+            red += c2.red;
+            green += c2.green;
+            blue += c2.blue;
+            return *this;
+        }
+};
+
 // Point = Point + Vector
 inline Point operator + (const Point& p, const Vector& v){
     Point retp = {p.x + v.x, p.y + v.y, p.z + v.z};
@@ -69,20 +89,38 @@ inline Vector operator - (const Vector& v1, const Vector& v2){
 }
 
 // Vector = Vector * Constant
-inline Vector operator * (const Vector& v, float c){
-    Vector retv = {v.x * c, v.y * c, v.z * c};
+inline Vector operator * (const Vector& v, float f){
+    Vector retv = {v.x * f, v.y * f, v.z * f};
     return retv;
 }
 
-inline Vector operator * (float c, const Vector& v){
-    Vector retv = {v.x * c, v.y * c, v.z * c};
+inline Vector operator * (float f, const Vector& v){
+    Vector retv = {v.x * f, v.y * f, v.z * f};
     return retv;
 }
 
-//Vector = Vector * Vector
+// Vector = Vector * Vector
 inline float operator * (const Vector& v1, const Vector& v2){
     float retv = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
     return retv;
 }
+
+// Color = Color * Color
+inline Color operator * (const Color& c1, const Color &c2){
+    Color retC = {c1.red * c2.red, c1.green * c2.green, c1.blue * c2.blue};
+    return retC;
+}
+
+// Color = Constant * Color
+inline Color operator * (float f, const Color &c){
+    Color retC = {c.red * f, c.green * f, c.blue * f};
+    return retC;
+}
+
+// Color = Color + Color
+inline Color operator + (const Color& c1, const Color& c2){
+    Color retC = {c1.red + c2.red, c1.green + c2.green, c1.blue + c2.blue};
+    return retC;
+} 
 
 #endif

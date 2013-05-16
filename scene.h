@@ -12,12 +12,12 @@ class Scene{
         int sizex, sizey;
         
         Scene(){
-            sizex = 640;
-            sizey = 480;
+            sizex = 640*ZOOM;
+            sizey = 480*ZOOM;
 
-            Material m0 = {.5, 1.0f, 1.0f, 0.0f};
-            Material m1 = {.5, 0.0f, 1.0f, 1.0f};
-            Material m2 = {.5, 1.0f, 0.0f, 1.0f};
+            Material m0 = {{1, 1, 0}, 0.5, {1, 1, 1}, 60};
+            Material m1 = {{0, 1, 1}, 0.5, {1, 1, 1}, 60};
+            Material m2 = {{1, 0, 1}, 0.5, {1, 1, 1}, 60};
 
             materials.push_back(m0);
             materials.push_back(m1);
@@ -31,8 +31,8 @@ class Scene{
             spheres.push_back(s1);  
             spheres.push_back(s2);
 
-            Light l0 = {{0.0f,240,-100.0f},1,1,1};
-            Light l1 = {{640, 240, -10000},.6,.7,1};
+            Light l0 = {{0.0f,240,-100.0f},{1,1,1}};
+            Light l1 = {{640, 240, -10000},{.5,.6,.7}};
 
             lights.push_back(l0);
             lights.push_back(l1);     

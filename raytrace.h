@@ -1,15 +1,28 @@
 #ifndef __RAYTRACE_H
 #define __RAYTRACE_H
 
+#define ZOOM 4.0
+
 class bitmap_image;
 class Ray;
 class Scene;
 class Point;
+class Color;
 
 class Material{
     public:
+        enum {
+            gouraud=0,
+            noise=1,
+            marble=2,
+            turbulence=3
+        } type;
+
+        Color diffuse;
+        Color diffuse2;
         float reflection;
-        float red, green, blue;
+        Color specular;
+        float power;
 };
 
 class Sphere{
@@ -24,7 +37,7 @@ class Sphere{
 class Light{
     public:
         Point pos;
-        float red, green, blue;
+        Color intensity;
 };
 
 class Ray{
@@ -44,11 +57,8 @@ struct arg{
     int tId;
 };
 
-// The draw function is a serial version of the renderer.
-void draw(const Scene& myScene, bitmap_image& pic);
-
 // Shoot a ray into the scene and find the color that it returns.
-void shootRay(Ray& viewRay, Scene& myScene, float& r, float& g, float& b, float coeff);
+Color shootRay(Ray& viewRay, Scene& myScene);
 
 #endif
 
