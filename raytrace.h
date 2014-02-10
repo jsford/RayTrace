@@ -20,7 +20,7 @@ class Material{
 
         Color diffuse;
         Color diffuse2;
-        float reflection;
+        float bump, density, reflection;
         Color specular;
         float power;
 };

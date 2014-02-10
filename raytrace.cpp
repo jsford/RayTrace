@@ -99,6 +99,10 @@ void* partialDraw(void* ptr){
     pthread_exit(NULL);
 }
 
+double noise(float x, float y, float z){
+    return 10*rand()/RAND_MAX;
+}
+
 Color shootRay(Ray& viewRay, Scene& myScene){
     
     Color retColor = {0.0f, 0.0f, 0.0f};
@@ -133,6 +137,23 @@ Color shootRay(Ray& viewRay, Scene& myScene){
 
         Material currentMat = myScene.materials[myScene.spheres[currentObj].materialId];
         
+        if (currentMat.bump)
+        {
+            float noiseCoefx = float(noise(0.1 * double(hitPt.x), 0.1 * double(hitPt.y),0.1 * double(hitPt.z)));
+            float noiseCoefy = float(noise(0.1 * double(hitPt.y), 0.1 * double(hitPt.z),0.1 * double(hitPt.x)));
+            float noiseCoefz = float(noise(0.1 * double(hitPt.z), 0.1 * double(hitPt.x),0.1 * double(hitPt.y)));
+            
+            norm.x = (1.0f - currentMat.bump ) * norm.x + currentMat.bump * noiseCoefx;  
+            norm.y = (1.0f - currentMat.bump ) * norm.y + currentMat.bump * noiseCoefy;  
+            norm.z = (1.0f - currentMat.bump ) * norm.z + currentMat.bump * noiseCoefz;  
+            
+            temp = norm * norm;
+            if (temp == 0.0f)
+            break;
+            temp = 1.0/sqrtf(temp);
+            norm = temp * norm;
+        }
+
         Ray lightRay;
         lightRay.start = hitPt;
 
@@ -163,11 +184,42 @@ Color shootRay(Ray& viewRay, Scene& myScene){
                 }
             }
             if (!inShadow) {
-
+    
                  float lambert = (lightRay.dir * norm) * coef;
-                 retColor.red += lambert * current.intensity.red * currentMat.diffuse.red;
-                 retColor.green += lambert * current.intensity.green * currentMat.diffuse.green;
-                 retColor.blue += lambert * current.intensity.blue * currentMat.diffuse.blue;
+                 float noiseCoef = 0.0f;
+                 switch(currentMat.type){
+                    case Material::turbulence:
+                        for (int level = 1; level < 10; level++)
+                        {
+                            noiseCoef += (1.0f / level)
+                                * fabsf(float(noise(level * 0.05 * hitPt.x,  
+                                                    level * 0.05 * hitPt.y,
+                                                    level * 0.05 * hitPt.z)));
+                        };
+                        retColor = retColor +  coef * (lambert * current.intensity)  
+                                * (noiseCoef * currentMat.diffuse + (1.0f - noiseCoef) * currentMat.diffuse2);
+                    
+                        break;
+
+                    case Material::marble:
+                        for (int level = 1; level < 10; level ++)
+                        {
+                            noiseCoef +=  (1.0f / level)  
+                            * fabsf(float(noise(level * 0.05 * hitPt.x,  
+                                                level * 0.05 * hitPt.y,  
+                                                level * 0.05 * hitPt.z)));
+                        };
+                        noiseCoef = 0.5f * sinf( (hitPt.x + hitPt.y) * 0.05f + noiseCoef) + 0.5f;
+                        retColor = retColor +  coef * (lambert * current.intensity)  
+                            * (noiseCoef * currentMat.diffuse + (1.0f - noiseCoef) * currentMat.diffuse2);
+                        break;
+
+                    default:
+				        retColor.red += lambert * current.intensity.red * currentMat.diffuse.red;
+                        retColor.green += lambert * current.intensity.green * currentMat.diffuse.green;
+                        retColor.blue += lambert * current.intensity.blue * currentMat.diffuse.blue;
+                        break;
+                }
 
                  float exposure = -1.2f;
                  retColor.red = 1.0 - expf(retColor.red * exposure);                
